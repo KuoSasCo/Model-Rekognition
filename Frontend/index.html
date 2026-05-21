@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIGR — Sistema Inteligente de Gestión de Residuos</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --green: #1a7a4a;
+            --green-light: #22a060;
+            --green-pale: #e8f5ee;
+            --green-mid: #d0eddc;
+            --earth: #5c4a32;
+            --cream: #f8f4ee;
+            --dark: #141a12;
+            --gray: #6b7569;
+            --gray-light: #e8e8e4;
+            --white: #ffffff;
+            --accent: #e8b84b;
+            --red: #c0392b;
+            --blue: #2d6fa3;
+            --orange: #d4651a;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--cream);
+            color: var(--dark);
+            overflow-x: hidden;
+        }
+
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 48px;
+            background: rgba(248, 244, 238, 0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(26, 122, 74, 0.12);
+        }
+
+        .nav-logo {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 22px;
+            color: var(--green);
+            letter-spacing: -0.5px;
+        }
+
+        .nav-logo span {
+            color: var(--earth);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--gray);
+            text-decoration: none;
+            transition: color .2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--green);
+        }
+
+        .hero {
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            align-items: center;
+            padding: 120px 48px 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -120px;
+            right: -80px;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(26, 122, 74, 0.12) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .hero-text {
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--green-pale);
+            border: 1px solid rgba(26, 122, 74, 0.2);
+            color: var(--green);
+            font-size: 12px;
+            font-weight: 500;
+            padding: 6px 14px;
+            border-radius: 100px;
+            margin-bottom: 28px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .hero-badge::before {
+            content: '';
+            width: 7px;
+            height: 7px;
+            background: var(--green-light);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.5;
+                transform: scale(0.8);
+            }
+        }
+
+        h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(42px, 5vw, 68px);
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -2px;
+            color: var(--dark);
+            margin-bottom: 24px;
+        }
+
+        h1 em {
+            font-style: normal;
+            color: var(--green);
+        }
+
+        .hero-desc {
+            font-size: 17px;
+            line-height: 1.7;
+            color: var(--gray);
+            max-width: 440px;
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+
+        .hero-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--green);
+            color: #fff;
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+            font-size: 15px;
+            padding: 16px 32px;
+            border-radius: 100px;
+            text-decoration: none;
+            transition: all .25s;
+            box-shadow: 0 4px 20px rgba(26, 122, 74, 0.3);
+        }
+
+        .hero-cta:hover {
+            background: var(--green-light);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(26, 122, 74, 0.4);
+        }
+
+        .hero-cta svg {
+            transition: transform .25s;
+        }
+
+        .hero-cta:hover svg {
+            transform: translateX(4px);
+        }
+
+        .hero-visual {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .hero-circle {
+            width: 420px;
+            height: 420px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--green-pale) 0%, var(--green-mid) 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid rgba(26, 122, 74, 0.15);
+        }
+
+        .hero-circle::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 50%;
+            background: conic-gradient(from 0deg, rgba(26, 122, 74, 0.2), transparent, rgba(26, 122, 74, 0.2));
+            animation: spin 8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .hero-icon {
+            font-size: 80px;
+            line-height: 1;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-circle-label {
+            font-family: 'Syne', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--green);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-top: 16px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .floating-tag {
+            position: absolute;
+            background: var(--white);
+            border-radius: 12px;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .floating-tag:nth-child(2) {
+            top: 60px;
+            right: -20px;
+            animation-delay: 0s;
+        }
+
+        .floating-tag:nth-child(3) {
+            bottom: 100px;
+            left: -30px;
+            animation-delay: 1s;
+        }
+
+        .floating-tag:nth-child(4) {
+            bottom: 60px;
+            right: -10px;
+            animation-delay: 2s;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+
+        .tag-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .dot-green {
+            background: #22a060;
+        }
+
+        .dot-orange {
+            background: #d4651a;
+        }
+
+        .dot-blue {
+            background: #2d6fa3;
+        }
+
+        .sobre {
+            padding: 100px 48px;
+            background: var(--dark);
+            color: var(--white);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .sobre::before {
+            content: '';
+            position: absolute;
+            bottom: -100px;
+            left: -100px;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(26, 122, 74, 0.3) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .sobre-grid {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .section-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--green-light);
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(32px, 4vw, 48px);
+            font-weight: 700;
+            line-height: 1.1;
+            letter-spacing: -1.5px;
+            margin-bottom: 24px;
+        }
+
+        .sobre-desc {
+            font-size: 16px;
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 300;
+            margin-bottom: 32px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all .25s;
+        }
+
+        .stat-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-4px);
+        }
+
+        .stat-num {
+            font-family: 'Syne', sans-serif;
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--green-light);
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .sobre-img-area {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all .2s;
+        }
+
+        .flow-step:hover {
+            background: rgba(26, 122, 74, 0.15);
+            border-color: rgba(26, 122, 74, 0.3);
+        }
+
+        .flow-num {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--green);
+            color: #fff;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .flow-text strong {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .flow-text span {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .clasificador {
+            padding: 100px 48px;
+            background: var(--cream);
+        }
+
+        .clasificador-inner {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 56px;
+        }
+
+        .section-header p {
+            font-size: 16px;
+            color: var(--gray);
+            max-width: 500px;
+            margin: 16px auto 0;
+            line-height: 1.7;
+            font-weight: 300;
+        }
+
+        .upload-area {
+            border: 2px dashed rgba(26, 122, 74, 0.3);
+            border-radius: 24px;
+            background: var(--white);
+            padding: 60px 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all .25s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover,
+        .upload-area.dragover {
+            border-color: var(--green);
+            background: var(--green-pale);
+            transform: scale(1.01);
+        }
+
+        .upload-area input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .upload-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: var(--green-pale);
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+        }
+
+        .upload-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .upload-sub {
+            font-size: 14px;
+            color: var(--gray);
+            margin-bottom: 24px;
+        }
+
+        .upload-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--green);
+            color: #fff;
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            padding: 12px 28px;
+            border-radius: 100px;
+            cursor: pointer;
+            transition: all .2s;
+            border: none;
+            box-shadow: 0 4px 16px rgba(26, 122, 74, 0.25);
+        }
+
+        .upload-btn:hover {
+            background: var(--green-light);
+            transform: translateY(-1px);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 24px 0;
+            color: var(--gray);
+            font-size: 13px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--gray-light);
+        }
+
+        .camera-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: var(--white);
+            border: 1.5px solid var(--gray-light);
+            color: var(--dark);
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+            padding: 14px;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all .2s;
+        }
+
+        .camera-btn:hover {
+            border-color: var(--green);
+            color: var(--green);
+        }
+
+        #preview-container {
+            display: none;
+            margin-top: 32px;
+            background: var(--white);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 4px 32px rgba(0, 0, 0, 0.08);
+        }
+
+        #preview-img {
+            width: 100%;
+            max-height: 360px;
+            object-fit: contain;
+            display: block;
+            background: #000;
+        }
+
+        .preview-img-wrap {
+            position: relative;
+            line-height: 0;
+        }
+
+        #bbox-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            display: none;
+        }
+
+        .preview-actions {
+            padding: 24px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn-classify {
+            flex: 1;
+            background: var(--green);
+            color: #fff;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            padding: 16px;
+            border-radius: 12px;
+            border: none;
+            cursor: pointer;
+            transition: all .25s;
+            box-shadow: 0 4px 16px rgba(26, 122, 74, 0.3);
+        }
+
+        .btn-classify:hover {
+            background: var(--green-light);
+            transform: translateY(-2px);
+        }
+
+        .btn-classify:disabled {
+            background: var(--gray-light);
+            color: var(--gray);
+            box-shadow: none;
+            transform: none;
+            cursor: not-allowed;
+        }
+
+        .btn-reset {
+            padding: 16px 20px;
+            border-radius: 12px;
+            border: 1.5px solid var(--gray-light);
+            background: transparent;
+            color: var(--gray);
+            cursor: pointer;
+            font-size: 18px;
+            transition: all .2s;
+        }
+
+        .btn-reset:hover {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        #resultado {
+            display: none;
+            margin: 32px 0 0;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 4px 32px rgba(0, 0, 0, 0.08);
+        }
+
+        .resultado-header {
+            padding: 28px 32px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .resultado-icon {
+            font-size: 48px;
+        }
+
+        .resultado-tipo {
+            font-family: 'Syne', sans-serif;
+            font-size: 28px;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: -0.5px;
+        }
+
+        .resultado-sub {
+            font-size: 14px;
+            margin-top: 4px;
+            opacity: 0.7;
+        }
+
+        .resultado-confianza {
+            padding: 20px 32px;
+            background: rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .confianza-label {
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .confianza-bar {
+            flex: 1;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 100px;
+            overflow: hidden;
+        }
+
+        .confianza-fill {
+            height: 100%;
+            border-radius: 100px;
+            transition: width 1s ease;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .confianza-val {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            white-space: nowrap;
+        }
+
+        .res-reciclable {
+            background: #dcf5e7;
+            color: #155c30;
+        }
+
+        .res-organico {
+            background: #fef3dc;
+            color: #7a4f08;
+        }
+
+        .res-no-reciclable {
+            background: #fde8e8;
+            color: #7a1a1a;
+        }
+
+        .res-posible {
+            background: #ddeeff;
+            color: #1a3a6e;
+        }
+
+        .res-default {
+            background: var(--green-pale);
+            color: var(--green);
+        }
+
+        #loading {
+            display: none;
+            text-align: center;
+            padding: 48px;
+            background: var(--white);
+            border-radius: 24px;
+            margin-top: 32px;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            border: 3px solid var(--green-pale);
+            border-top-color: var(--green);
+            animation: spin2 .8s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin2 {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        #loading p {
+            font-size: 15px;
+            color: var(--gray);
+        }
+
+        .feedback {
+            padding: 100px 48px;
+            background: linear-gradient(180deg, #f0f7f2 0%, var(--cream) 100%);
+        }
+
+        .feedback-inner {
+            max-width: 680px;
+            margin: 0 auto;
+        }
+
+        .feedback-card {
+            background: var(--white);
+            border-radius: 28px;
+            padding: 52px;
+            box-shadow: 0 8px 48px rgba(0, 0, 0, 0.08);
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--dark);
+            margin-bottom: 8px;
+            letter-spacing: 0.2px;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        textarea {
+            width: 100%;
+            padding: 14px 18px;
+            border: 1.5px solid var(--gray-light);
+            border-radius: 12px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            color: var(--dark);
+            background: var(--cream);
+            outline: none;
+            transition: all .2s;
+            resize: none;
+            appearance: none;
+        }
+
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        textarea:focus {
+            border-color: var(--green);
+            background: var(--white);
+            box-shadow: 0 0 0 4px rgba(26, 122, 74, 0.08);
+        }
+
+        textarea {
+            height: 140px;
+            line-height: 1.6;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background: var(--green);
+            color: #fff;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            padding: 18px;
+            border-radius: 14px;
+            border: none;
+            cursor: pointer;
+            transition: all .25s;
+            margin-top: 8px;
+            box-shadow: 0 4px 20px rgba(26, 122, 74, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-submit:hover {
+            background: var(--green-light);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(26, 122, 74, 0.4);
+        }
+
+        #feedback-success {
+            display: none;
+            text-align: center;
+            padding: 40px 0;
+        }
+
+        .success-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .success-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--green);
+            margin-bottom: 8px;
+        }
+
+        .success-sub {
+            font-size: 15px;
+            color: var(--gray);
+        }
+
+        footer {
+            background: var(--dark);
+            color: rgba(255, 255, 255, 0.4);
+            text-align: center;
+            padding: 40px 48px;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+
+        footer strong {
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            nav {
+                padding: 16px 24px;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .hero {
+                grid-template-columns: 1fr;
+                padding: 100px 24px 60px;
+            }
+
+            .hero-visual {
+                display: none;
+            }
+
+            .sobre {
+                padding: 60px 24px;
+            }
+
+            .sobre-grid {
+                grid-template-columns: 1fr;
+                gap: 48px;
+            }
+
+            .clasificador,
+            .feedback {
+                padding: 60px 24px;
+            }
+
+            .feedback-card {
+                padding: 32px 24px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav>
+        <div class="nav-logo">SIGR<span>.</span></div>
+        <ul class="nav-links">
+            <li><a href="#sobre">Sobre el proyecto</a></li>
+            <li><a href="#clasificador">Clasificador</a></li>
+            <li><a href="#feedback">Feedback</a></li>
+        </ul>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-text">
+            <div class="hero-badge">Sistema activo — Raspberry Pi</div>
+            <h1>Clasifica tus<br><em>residuos</em><br>con IA.</h1>
+            <p class="hero-desc">SIGR usa visión artificial para identificar si un residuo es reciclable, orgánico, no
+                reciclable o posiblemente reciclable — en tiempo real.</p>
+            <a href="#clasificador" class="hero-cta">
+                Probar el clasificador
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M3 8h10M9 4l4 4-4 4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+            </a>
+        </div>
+        <div class="hero-visual">
+            <div class="hero-circle">
+                <div class="hero-icon">♻️</div>
+                <div class="hero-circle-label">Clasificación activa</div>
+            </div>
+            <div class="floating-tag">
+                <div class="tag-dot dot-green"></div> Reciclable
+            </div>
+            <div class="floating-tag">
+                <div class="tag-dot dot-orange"></div> Orgánico
+            </div>
+            <div class="floating-tag">
+                <div class="tag-dot dot-blue"></div> Posiblemente reciclable
+            </div>
+        </div>
+    </section>
+
+    <section class="sobre" id="sobre">
+        <div class="sobre-grid">
+            <div>
+                <div class="section-label">Sobre el proyecto</div>
+                <h2 style="color:#fff">¿Cómo funciona<br>el sistema?</h2>
+                <p class="sobre-desc">SIGR combina una Raspberry Pi con los servicios de inteligencia artificial de
+                    Amazon Web Services para clasificar residuos sólidos automáticamente. El modelo fue entrenado con
+                    imágenes reales de residuos sobre fondo negro.</p>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-num">4</div>
+                        <div class="stat-label">Categorías de clasificación</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-num">95%</div>
+                        <div class="stat-label">Confianza mínima del modelo</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-num">AWS</div>
+                        <div class="stat-label">Rekognition Custom Labels</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-num">S3</div>
+                        <div class="stat-label">Almacenamiento de imágenes</div>
+                    </div>
+                </div>
+            </div>
+            <div class="sobre-img-area">
+                <div class="flow-step">
+                    <div class="flow-num">1</div>
+                    <div class="flow-text"><strong>Captura de imagen</strong><span>Foto desde la web o cámara de la
+                            Raspberry</span></div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-num">2</div>
+                    <div class="flow-text"><strong>Envío a AWS S3</strong><span>La imagen se sube al bucket de
+                            almacenamiento</span></div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-num">3</div>
+                    <div class="flow-text"><strong>Análisis con Rekognition</strong><span>El modelo custom clasifica el
+                            residuo</span></div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-num">4</div>
+                    <div class="flow-text"><strong>Resultado en pantalla</strong><span>La Raspberry muestra la categoría
+                            detectada</span></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="clasificador" id="clasificador">
+        <div class="clasificador-inner">
+            <div class="section-header">
+                <div class="section-label" style="text-align:center">Clasificador</div>
+                <h2>Sube una foto<br>de tu residuo</h2>
+                <p>La imagen será analizada por nuestro modelo de IA y verás la clasificación en segundos.</p>
+            </div>
+
+            <div class="upload-area" id="upload-area">
+                <input type="file" id="file-input" accept="image/*">
+                <div class="upload-icon">📷</div>
+                <div class="upload-title">Arrastra tu imagen aquí</div>
+                <div class="upload-sub">PNG, JPG o WEBP — máximo 10MB</div>
+                <button class="upload-btn"
+                    onclick="event.stopPropagation(); document.getElementById('file-input').click()">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M8 2v9M4 5l4-4 4 4" stroke="#fff" stroke-width="1.8" stroke-linecap="round"
+                            stroke-linejoin="round" />
+                        <path d="M2 12h12" stroke="#fff" stroke-width="1.8" stroke-linecap="round" />
+                    </svg>
+                    Seleccionar archivo
+                </button>
+            </div>
+
+            <div class="divider">o</div>
+
+            <button class="camera-btn" onclick="abrirCamara()">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <rect x="1" y="5" width="18" height="13" rx="3" stroke="currentColor" stroke-width="1.5" />
+                    <circle cx="10" cy="11.5" r="3.5" stroke="currentColor" stroke-width="1.5" />
+                    <path d="M7 5l1.5-2.5h3L13 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                </svg>
+                Tomar foto con la cámara
+            </button>
+
+            <div id="preview-container">
+                <div class="preview-img-wrap">
+                    <img id="preview-img" alt="Vista previa">
+                    <canvas id="bbox-canvas"></canvas>
+                </div>
+                <div class="preview-actions">
+                    <button class="btn-classify" id="btn-classify" onclick="clasificar()">🔍 Clasificar residuo</button>
+                    <button class="btn-reset" onclick="resetClasificador()" title="Eliminar imagen">✕</button>
+                </div>
+            </div><!-- /.preview-container -->
+
+            <div id="loading">
+                <div class="spinner"></div>
+                <p id="loading-text">Analizando imagen con IA…</p>
+            </div>
+
+            <div id="resultado"></div>
+        </div>
+    </section>
+
+    <section class="feedback" id="feedback">
+        <div class="feedback-inner">
+            <div class="section-header">
+                <div class="section-label" style="text-align:center">Feedback</div>
+                <h2>¿Qué te pareció<br>el proyecto?</h2>
+                <p>Tu opinión nos ayuda a mejorar el sistema y el modelo de clasificación.</p>
+            </div>
+            <div class="feedback-card">
+                <div id="feedback-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="fb-nombre">Nombre</label>
+                            <input type="text" id="fb-nombre" placeholder="Tu nombre">
+                        </div>
+                        <div class="form-group">
+                            <label for="fb-email">Correo electrónico</label>
+                            <input type="email" id="fb-email" placeholder="tu@email.com">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="fb-comentario">Comentario</label>
+                        <textarea id="fb-comentario"
+                            placeholder="Cuéntanos tu experiencia, sugerencias o ideas para mejorar el sistema…"></textarea>
+                    </div>
+                    <button class="btn-submit" onclick="enviarFeedback()">
+                        <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                            <path d="M2 9h14M11 4l5 5-5 5" stroke="#fff" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                        </svg>
+                        Enviar feedback
+                    </button>
+                </div>
+                <div id="feedback-success">
+                    <div class="success-icon">🌿</div>
+                    <div class="success-title">¡Gracias por tu feedback!</div>
+                    <p class="success-sub">Tu opinión es muy valiosa para seguir mejorando el sistema SIGR.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <strong>SIGR</strong> — Sistema Inteligente de Gestión de Residuos<br>
+        Desarrollado con Amazon Rekognition · AWS S3 · Raspberry Pi
+    </footer>
+
+    <script>
+        const BACKEND = 'https://test-sigr-production.up.railway.app';
+
+        const LABEL_META = {
+            'reciclable':            { icono: '♻️',  clase: 'res-reciclable',    desc: 'Este residuo puede ser reciclado.' },
+            'organico':              { icono: '🌱',  clase: 'res-organico',      desc: 'Este residuo es de origen orgánico. Puede usarse para compostaje.' },
+            'no reciclable':         { icono: '🗑️', clase: 'res-no-reciclable', desc: 'Este residuo no es reciclable. Deposítalo en la basura general.' },
+            'posiblemente reciclable':{ icono: '🔄', clase: 'res-posible',       desc: 'Podría ser reciclable dependiendo del municipio.' },
+        };
+
+        const fileInput  = document.getElementById('file-input');
+        const uploadArea = document.getElementById('upload-area');
+        let archivoSeleccionado = null;
+        let mqttClient          = null;
+        let iotTimeout          = null;
+        let pendingImageKey     = null;
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) mostrarPreview(file);
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) mostrarPreview(file);
+        });
+
+        function mostrarPreview(file) {
+            archivoSeleccionado = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('preview-img').src = e.target.result;
+                document.getElementById('bbox-canvas').style.display = 'none';
+                document.getElementById('preview-container').style.display = 'block';
+                document.getElementById('resultado').style.display = 'none';
+                document.getElementById('resultado').innerHTML = '';
+                uploadArea.style.display = 'none';
+                document.querySelector('.divider').style.display = 'none';
+                document.querySelector('.camera-btn').style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function resetClasificador() {
+            if (mqttClient) { mqttClient.end(true); mqttClient = null; }
+            clearTimeout(iotTimeout);
+            archivoSeleccionado = null;
+            pendingImageKey     = null;
+            fileInput.value     = '';
+            document.getElementById('bbox-canvas').style.display = 'none';
+            document.getElementById('preview-container').style.display = 'none';
+            document.getElementById('resultado').style.display = 'none';
+            document.getElementById('resultado').innerHTML = '';
+            document.getElementById('loading').style.display = 'none';
+            uploadArea.style.display = 'block';
+            document.querySelector('.divider').style.display = 'flex';
+            document.querySelector('.camera-btn').style.display = 'flex';
+        }
+
+        function abrirCamara() {
+            const input = document.createElement('input');
+            input.type = 'file'; input.accept = 'image/*'; input.capture = 'environment';
+            input.onchange = (e) => { if (e.target.files[0]) mostrarPreview(e.target.files[0]); };
+            input.click();
+        }
+
+        function setLoadingText(text) {
+            document.getElementById('loading-text').textContent = text;
+        }
+
+        async function clasificar() {
+            if (!archivoSeleccionado) return;
+            const btn = document.getElementById('btn-classify');
+            btn.disabled = true;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('resultado').style.display = 'none';
+            setLoadingText('Conectando con el sistema en tiempo real…');
+
+            try {
+                // Phase 1: get a signed WebSocket URL from Flask
+                const urlRes = await fetch(`${BACKEND}/iot-url`);
+                if (!urlRes.ok) throw new Error('No se pudo obtener la URL de IoT Core.');
+                const { websocket_url } = await urlRes.json();
+
+                // Phase 2: connect to IoT Core and subscribe before uploading
+                mqttClient = mqtt.connect(websocket_url, {
+                    clientId: 'sigr-' + Math.random().toString(16).slice(2, 10),
+                    clean: true,
+                    reconnectPeriod: 0,
+                    connectTimeout: 8000,
+                });
+
+                mqttClient.on('error', (err) => {
+                    console.error('[MQTT] error:', err);
+                    _abortWithError('No se pudo conectar con IoT Core. Intenta de nuevo.');
+                });
+
+                mqttClient.on('connect', async () => {
+                    mqttClient.subscribe('sigr/results', async (err) => {
+                        if (err) return _abortWithError('No se pudo suscribir al canal de resultados.');
+
+                        setLoadingText('Subiendo imagen…');
+
+                        // Phase 3: upload — Flask puts it in S3 under uploads/
+                        const formData = new FormData();
+                        formData.append('imagen', archivoSeleccionado);
+                        const uploadRes = await fetch(`${BACKEND}/clasificar`, {
+                            method: 'POST',
+                            body: formData
+                        });
+                        const uploadData = await uploadRes.json();
+                        if (uploadData.error) return _abortWithError(uploadData.error);
+
+                        pendingImageKey = uploadData.imagen_key;
+                        setLoadingText('Raspberry Pi analizando con Rekognition…');
+
+                        // Timeout fallback — 45 s
+                        iotTimeout = setTimeout(() => {
+                            _abortWithError('El procesamiento tardó demasiado. Verifica que la Raspberry Pi esté activa.');
+                        }, 45000);
+                    });
+                });
+
+                // Phase 4: receive result published by the Raspberry Pi
+                mqttClient.on('message', (topic, message) => {
+                    const payload = JSON.parse(message.toString());
+                    if (payload.photo !== pendingImageKey) return; // ignore other uploads
+
+                    clearTimeout(iotTimeout);
+                    mqttClient.end(true);
+                    mqttClient = null;
+
+                    document.getElementById('loading').style.display = 'none';
+                    btn.disabled = false;
+
+                    _renderResult(payload.detections || []);
+                });
+
+            } catch (err) {
+                _abortWithError('Error de conexión: ' + err.message);
+            }
+        }
+
+        function _abortWithError(msg) {
+            if (mqttClient) { mqttClient.end(true); mqttClient = null; }
+            clearTimeout(iotTimeout);
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('btn-classify').disabled = false;
+            mostrarResultado('Error', 0, '⚠️', 'res-default', msg);
+        }
+
+        function _renderResult(detections) {
+            if (!detections.length) {
+                mostrarResultado('Sin detección', 0, '❓', 'res-default',
+                    'No se detectó ningún residuo con suficiente confianza.');
+                return;
+            }
+
+            const best = detections.reduce((a, b) => a.Confidence > b.Confidence ? a : b);
+            const key  = best.Name.toLowerCase().trim();
+            const meta = LABEL_META[key] || { icono: '🔍', clase: 'res-default', desc: 'Residuo clasificado por el modelo.' };
+
+            mostrarResultado(best.Name, best.Confidence, meta.icono, meta.clase, meta.desc);
+
+            const withBoxes = detections.filter(d => d.Geometry);
+            if (withBoxes.length) drawBoundingBoxes(withBoxes);
+        }
+
+        function drawBoundingBoxes(detections) {
+            const img    = document.getElementById('preview-img');
+            const canvas = document.getElementById('bbox-canvas');
+
+            // Use displayed (rendered) image size so boxes align with object-fit:contain
+            const w = img.offsetWidth;
+            const h = img.offsetHeight;
+            canvas.width  = w;
+            canvas.height = h;
+            canvas.style.display = 'block';
+
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, w, h);
+
+            detections.forEach(det => {
+                const box  = det.Geometry.BoundingBox;
+                const x    = box.Left  * w;
+                const y    = box.Top   * h;
+                const bw   = box.Width * w;
+                const bh   = box.Height * h;
+                const label = `${det.Name} ${det.Confidence.toFixed(0)}%`;
+
+                ctx.strokeStyle = '#22a060';
+                ctx.lineWidth   = 3;
+                ctx.strokeRect(x, y, bw, bh);
+
+                ctx.font = 'bold 13px "DM Sans", sans-serif';
+                const textW = ctx.measureText(label).width;
+                ctx.fillStyle = 'rgba(26,122,74,0.9)';
+                ctx.fillRect(x, y - 24, textW + 12, 24);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText(label, x + 6, y - 7);
+            });
+        }
+
+        function mostrarResultado(label, confianza, icono, clase, desc) {
+            const res = document.getElementById('resultado');
+            res.innerHTML = `
+    <div class="resultado-header ${clase}">
+      <div class="resultado-icon">${icono}</div>
+      <div>
+        <div class="resultado-tipo">${label}</div>
+        <div class="resultado-sub">${desc}</div>
+      </div>
+    </div>
+    <div class="resultado-confianza">
+      <span class="confianza-label">Confianza del modelo</span>
+      <div class="confianza-bar">
+        <div class="confianza-fill" id="confianza-fill" style="width:0%"></div>
+      </div>
+      <span class="confianza-val">${confianza.toFixed(1)}%</span>
+    </div>`;
+            res.style.display = 'block';
+            setTimeout(() => {
+                const fill = document.getElementById('confianza-fill');
+                if (fill) fill.style.width = confianza + '%';
+            }, 100);
+        }
+
+        async function enviarFeedback() {
+            const nombre     = document.getElementById('fb-nombre').value.trim();
+            const email      = document.getElementById('fb-email').value.trim();
+            const comentario = document.getElementById('fb-comentario').value.trim();
+
+            if (!comentario) {
+                document.getElementById('fb-comentario').focus();
+                document.getElementById('fb-comentario').style.borderColor = '#c0392b';
+                setTimeout(() => document.getElementById('fb-comentario').style.borderColor = '', 2000);
+                return;
+            }
+
+            try {
+                await fetch(`${BACKEND}/feedback`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre, email, comentario })
+                });
+                document.getElementById('feedback-form').style.display = 'none';
+                document.getElementById('feedback-success').style.display = 'block';
+            } catch (err) {
+                alert('Error al enviar el feedback. Intenta de nuevo.');
+            }
+        }
+    </script>
+</body>
+
+</html>
