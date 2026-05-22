@@ -111,3 +111,29 @@ resource "aws_iam_user_policy" "raspberry_policy" {
 data "aws_iot_endpoint" "iot_data" {
   endpoint_type = "iot:Data-ATS"
 }
+# 7. IAM user for Flask backend (signs WebSocket URLs for the browser)
+resource "aws_iam_user" "backend_user" {
+  name = "sigr-flask-backend"
+}
+
+resource "aws_iam_access_key" "backend_keys" {
+  user = aws_iam_user.backend_user.name
+}
+
+resource "aws_iam_user_policy" "backend_policy" {
+  name = "sigr-backend-iot-sign-policy"
+  user = aws_iam_user.backend_user.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["iot:Connect", "iot:Subscribe", "iot:Receive"]
+      Resource = [
+        "arn:aws:iot:${var.aws_region}:*:client/*",
+        "arn:aws:iot:${var.aws_region}:*:topicfilter/sigr/results",
+        "arn:aws:iot:${var.aws_region}:*:topic/sigr/results",
+      ]
+    }]
+  })
+}

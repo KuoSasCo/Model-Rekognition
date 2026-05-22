@@ -18,3 +18,11 @@ output "raspberry_secret_access_key" {
   value     = aws_iam_access_key.raspberry_keys.secret
   sensitive = true
 }
+output "backend_access_key_id" {
+  value = aws_iam_access_key.backend_keys.id
+}
+
+output "backend_secret_access_key" {
+  value     = aws_iam_access_key.backend_keys.secret
+  sensitive = true
+}
