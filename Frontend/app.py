@@ -3,9 +3,11 @@ import uuid
 import datetime
 import hashlib
 import hmac
+import io
 import urllib.parse
 import boto3
 import mysql.connector
+from PIL import Image
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -131,14 +133,18 @@ def clasificar():
         return jsonify({"error": "No se envió ninguna imagen."}), 400
 
     archivo = request.files["imagen"]
-    extension = archivo.filename.rsplit(".", 1)[-1].lower()
-    nombre_s3 = f"uploads/{uuid.uuid4().hex}.{extension}"
+    nombre_s3 = f"uploads/{uuid.uuid4().hex}.jpg"
 
     try:
+        img = Image.open(archivo.stream).convert("RGB")
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=90)
+        buf.seek(0)
+
         s3 = get_s3_client()
         s3.upload_fileobj(
-            archivo, S3_BUCKET, nombre_s3,
-            ExtraArgs={"ContentType": archivo.content_type}
+            buf, S3_BUCKET, nombre_s3,
+            ExtraArgs={"ContentType": "image/jpeg"}
         )
         return jsonify({"imagen_key": nombre_s3, "status": "queued"})
 
