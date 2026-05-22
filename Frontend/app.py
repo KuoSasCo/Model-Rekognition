@@ -95,7 +95,7 @@ def _iot_websocket_url():
     ])
 
     def _sign(key, msg):
-        return hmac.new(key, msg.encode(), hashlib.sha256).digest()
+     return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).digest()
 
     signing_key = _sign(
         _sign(_sign(_sign(f'AWS4{AWS_SECRET_KEY}'.encode(), date_stamp), AWS_REGION), service),
