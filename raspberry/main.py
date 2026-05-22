@@ -1,6 +1,7 @@
 import os
 import boto3
 import io
+import json
 import time
 from PIL import Image, ImageDraw, ImageFont
 from dotenv import load_dotenv
@@ -8,14 +9,20 @@ from datetime import datetime
 
 load_dotenv()
 
-# ── Configuración ──────────────────────────────────────────────
-BUCKET            = os.getenv('MY_BUCKET')
-MODEL             = 'arn:aws:rekognition:us-east-1:097300397506:project/model-black-background/version/model-black-background.2026-03-27T22.38.32/1774669112670'
-MIN_CONFIDENCE    = 80
-PREFIX            = 'uploads/'
-CHECK_INTERVAL    = 5
+BUCKET         = os.getenv('MY_BUCKET')
+IOT_ENDPOINT   = os.getenv('AWS_IOT_ENDPOINT')
+MODEL          = 'arn:aws:rekognition:us-east-1:097300397506:project/model-black-background/version/model-black-background.2026-03-27T22.38.32/1774669112670'
+MIN_CONFIDENCE = 80
+PREFIX         = 'uploads/'
+CHECK_INTERVAL = 5
 
 procesados = set()
+
+iot_data = boto3.client(
+    'iot-data',
+    region_name='us-east-1',
+    endpoint_url=f"https://{IOT_ENDPOINT}"
+)
 
 
 def display_image(bucket, photo, response):
@@ -43,10 +50,6 @@ def display_image(bucket, photo, response):
             except:
                 fnt = ImageFont.load_default()
             draw.text((left, top), customLabel['Name'], fill='#00d400', font=fnt)
-            print('Left: ' + '{0:.0f}'.format(left))
-            print('Top: ' + '{0:.0f}'.format(top))
-            print('Label Width: ' + "{0:.0f}".format(width))
-            print('Label Height: ' + "{0:.0f}".format(height))
             points = (
                 (left, top),
                 (left + width, top),
@@ -56,7 +59,6 @@ def display_image(bucket, photo, response):
             )
             draw.line(points, fill='#00d400', width=5)
 
-    # Banner inferior con resultado y hora
     draw.rectangle([(0, imgHeight - 80), (imgWidth, imgHeight)], fill=(20, 20, 20))
     if response['CustomLabels']:
         mejor = max(response['CustomLabels'], key=lambda x: x['Confidence'])
@@ -82,6 +84,15 @@ def show_custom_labels(bucket, photo):
         ProjectVersionArn=MODEL
     )
     display_image(bucket, photo, response)
+
+    payload = {"photo": photo, "detections": response['CustomLabels']}
+    iot_data.publish(
+        topic='sigr/results',
+        qos=1,
+        payload=json.dumps(payload)
+    )
+    print(f"[AWS IoT] Result dispatched — {len(response['CustomLabels'])} label(s)")
+
     return len(response['CustomLabels'])
 
 
