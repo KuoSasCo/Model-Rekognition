@@ -115,8 +115,13 @@ def health():
 @app.route("/iot-url", methods=["GET"])
 def iot_url():
     """Return a short-lived signed WebSocket URL for IoT Core MQTT."""
-    if not IOT_ENDPOINT:
-        return jsonify({"error": "AWS_IOT_ENDPOINT not configured"}), 500
+    missing = [name for v, name in [
+        (IOT_ENDPOINT, "AWS_IOT_ENDPOINT"),
+        (AWS_ACCESS_KEY, "AWS_ACCESS_KEY_ID"),
+        (AWS_SECRET_KEY, "AWS_SECRET_ACCESS_KEY"),
+    ] if not v]
+    if missing:
+        return jsonify({"error": f"Missing env vars: {missing}"}), 500
     return jsonify({"websocket_url": _iot_websocket_url()})
 
 
