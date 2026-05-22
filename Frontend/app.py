@@ -65,10 +65,10 @@ def get_s3_client():
 
 def _iot_websocket_url():
     """Generate a SigV4-signed WebSocket URL for AWS IoT Core MQTT."""
-    service   = 'iotdevicegateway'
-    algorithm = 'AWS4-HMAC-SHA256'
-    now       = datetime.datetime.utcnow()
-    amz_date  = now.strftime('%Y%m%dT%H%M%SZ')
+    service    = 'iotdevicegateway'
+    algorithm  = 'AWS4-HMAC-SHA256'
+    now        = datetime.datetime.utcnow()
+    amz_date   = now.strftime('%Y%m%dT%H%M%SZ')
     date_stamp = now.strftime('%Y%m%d')
 
     credential_scope = f'{date_stamp}/{AWS_REGION}/{service}/aws4_request'
@@ -91,17 +91,19 @@ def _iot_websocket_url():
 
     string_to_sign = '\n'.join([
         algorithm, amz_date, credential_scope,
-        hashlib.sha256(canonical_request.encode()).hexdigest()
+        hashlib.sha256(canonical_request.encode('utf-8')).hexdigest()
     ])
 
     def _sign(key, msg):
-     return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).digest()
+        if isinstance(key, str):
+            key = key.encode('utf-8')
+        return hmac.new(key, msg.encode('utf-8'), hashlib.sha256).digest()
 
     signing_key = _sign(
-        _sign(_sign(_sign(f'AWS4{AWS_SECRET_KEY}'.encode(), date_stamp), AWS_REGION), service),
+        _sign(_sign(_sign(f'AWS4{AWS_SECRET_KEY}', date_stamp), AWS_REGION), service),
         'aws4_request'
     )
-    signature = hmac.new(signing_key, string_to_sign.encode(), hashlib.sha256).hexdigest()
+    signature = hmac.new(signing_key, string_to_sign.encode('utf-8'), hashlib.sha256).hexdigest()
 
     return f'wss://{IOT_ENDPOINT}/mqtt?{qs}&X-Amz-Signature={signature}'
 
@@ -114,20 +116,17 @@ def health():
 
 @app.route("/iot-url", methods=["GET"])
 def iot_url():
-    """Return a short-lived signed WebSocket URL for IoT Core MQTT."""
-    missing = [name for v, name in [
-        (IOT_ENDPOINT, "AWS_IOT_ENDPOINT"),
-        (AWS_ACCESS_KEY, "AWS_ACCESS_KEY_ID"),
-        (AWS_SECRET_KEY, "AWS_SECRET_ACCESS_KEY"),
-    ] if not v]
-    if missing:
-        return jsonify({"error": f"Missing env vars: {missing}"}), 500
-    return jsonify({"websocket_url": _iot_websocket_url()})
+    import traceback
+    try:
+        if not IOT_ENDPOINT:
+            return jsonify({"error": "AWS_IOT_ENDPOINT not configured"}), 500
+        return jsonify({"websocket_url": _iot_websocket_url()})
+    except Exception as e:
+        return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
 
 @app.route("/clasificar", methods=["POST"])
 def clasificar():
-    """Upload image to S3 under uploads/. Analysis is done by the Raspberry Pi via SQS."""
     if "imagen" not in request.files:
         return jsonify({"error": "No se envió ninguna imagen."}), 400
 
