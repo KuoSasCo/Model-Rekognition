@@ -126,14 +126,21 @@ resource "aws_iam_user_policy" "backend_policy" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["iot:Connect", "iot:Subscribe", "iot:Receive"]
-      Resource = [
-        "arn:aws:iot:${var.aws_region}:*:client/*",
-        "arn:aws:iot:${var.aws_region}:*:topicfilter/sigr/results",
-        "arn:aws:iot:${var.aws_region}:*:topic/sigr/results",
-      ]
-    }]
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:PutObject"]
+        Resource = "${aws_s3_bucket.image_bucket.arn}/uploads/*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["iot:Connect", "iot:Subscribe", "iot:Receive"]
+        Resource = [
+          "arn:aws:iot:${var.aws_region}:*:client/*",
+          "arn:aws:iot:${var.aws_region}:*:topicfilter/sigr/results",
+          "arn:aws:iot:${var.aws_region}:*:topic/sigr/results",
+        ]
+      }
+    ]
   })
 }

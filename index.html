@@ -1296,7 +1296,8 @@
                     console.warn('[MQTT] disconnect packet:', packet);
                 });
 
-                mqttClient.stream?.on?.('close', (code, reason) => {
+                const _stream = mqttClient.stream;
+                _stream?.on?.('close', (code, reason) => {
                     console.warn('[WebSocket] closed — code:', code, 'reason:', reason?.toString() || 'n/a');
                 });
 
