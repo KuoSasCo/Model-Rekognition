@@ -1284,6 +1284,24 @@
                     _abortWithError('No se pudo conectar con IoT Core. Intenta de nuevo.');
                 });
 
+                mqttClient.on('close', () => {
+                    console.warn('[MQTT] connection closed');
+                });
+
+                // Capture the raw WebSocket close code for IAM/auth debugging
+                mqttClient.on('disconnect', (packet) => {
+                    console.warn('[MQTT] disconnect packet:', packet);
+                });
+
+                mqttClient.stream?.on?.('close', () => {
+                    const ws = mqttClient.stream?._socket;
+                    console.warn('[WebSocket] closed — code:', ws?.protocol ?? 'n/a');
+                });
+
+                mqttClient.on('packetsend', (pkt) => {
+                    if (pkt.cmd === 'connect') console.log('[MQTT] CONNECT sent, clientId:', pkt.clientId);
+                });
+
                 mqttClient.on('connect', async () => {
                     mqttClient.subscribe('sigr/results', async (err) => {
                         if (err) return _abortWithError('No se pudo suscribir al canal de resultados.');
