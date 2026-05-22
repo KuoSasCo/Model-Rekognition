@@ -87,6 +87,21 @@ resource "aws_iam_user_policy" "raspberry_policy" {
         Effect = "Allow"
         Action = ["iot:Publish"]
         Resource = "arn:aws:iot:${var.aws_region}:*:topic/sigr/results"
+      },
+      {
+        Effect = "Allow"
+        Action = ["iot:Connect"]
+        Resource = "arn:aws:iot:${var.aws_region}:*:client/*"
+      },
+      {
+        Effect = "Allow"
+        Action = ["iot:Subscribe"]
+        Resource = "arn:aws:iot:${var.aws_region}:*:topicfilter/sigr/results"
+      },
+      {
+        Effect = "Allow"
+        Action = ["iot:Receive"]
+        Resource = "arn:aws:iot:${var.aws_region}:*:topic/sigr/results"
       }
     ]
   })
