@@ -48,7 +48,7 @@ resource "aws_s3_bucket_notification" "bucket_notification" {
   depends_on = [aws_sqs_queue_policy.allow_s3_publish]
 }
 
-# 5. IAM Privileges for the Raspberry Pi Edge Device
+# 5. IAM User for Raspberry Pi Edge Device
 resource "aws_iam_user" "raspberry_user" {
   name = "sigr-raspberry-pi-edge"
 }
@@ -74,9 +74,9 @@ resource "aws_iam_user_policy" "raspberry_policy" {
         Resource = aws_sqs_queue.s3_event_queue.arn
       },
       {
-        Effect = "Allow"
-        Action = ["s3:GetObject"]
-        Resource = "${aws_s3_bucket.image_bucket.arn}/uploads/*"
+        Effect   = "Allow"
+        Action   = ["s3:GetObject"]
+        Resource = "${aws_s3_bucket.image_bucket.arn}/*"
       },
       {
         Effect = "Allow"
@@ -84,23 +84,23 @@ resource "aws_iam_user_policy" "raspberry_policy" {
         Resource = "arn:aws:rekognition:${var.aws_region}:*:project/*"
       },
       {
-        Effect = "Allow"
-        Action = ["iot:Publish"]
+        Effect   = "Allow"
+        Action   = ["iot:Publish"]
         Resource = "arn:aws:iot:${var.aws_region}:*:topic/sigr/results"
       },
       {
-        Effect = "Allow"
-        Action = ["iot:Connect"]
+        Effect   = "Allow"
+        Action   = ["iot:Connect"]
         Resource = "arn:aws:iot:${var.aws_region}:*:client/*"
       },
       {
-        Effect = "Allow"
-        Action = ["iot:Subscribe"]
+        Effect   = "Allow"
+        Action   = ["iot:Subscribe"]
         Resource = "arn:aws:iot:${var.aws_region}:*:topicfilter/sigr/results"
       },
       {
-        Effect = "Allow"
-        Action = ["iot:Receive"]
+        Effect   = "Allow"
+        Action   = ["iot:Receive"]
         Resource = "arn:aws:iot:${var.aws_region}:*:topic/sigr/results"
       }
     ]
@@ -111,7 +111,8 @@ resource "aws_iam_user_policy" "raspberry_policy" {
 data "aws_iot_endpoint" "iot_data" {
   endpoint_type = "iot:Data-ATS"
 }
-# 7. IAM user for Flask backend (signs WebSocket URLs for the browser)
+
+# 7. IAM User for Flask Backend
 resource "aws_iam_user" "backend_user" {
   name = "sigr-flask-backend"
 }
@@ -121,7 +122,7 @@ resource "aws_iam_access_key" "backend_keys" {
 }
 
 resource "aws_iam_user_policy" "backend_policy" {
-  name = "sigr-backend-iot-sign-policy"
+  name = "sigr-backend-policy"
   user = aws_iam_user.backend_user.name
 
   policy = jsonencode({
@@ -129,16 +130,16 @@ resource "aws_iam_user_policy" "backend_policy" {
     Statement = [
       {
         Effect   = "Allow"
-        Action   = ["s3:PutObject"]
-        Resource = "${aws_s3_bucket.image_bucket.arn}/uploads/*"
+        Action   = ["s3:PutObject", "s3:GetObject"]
+        Resource = "${aws_s3_bucket.image_bucket.arn}/*"
       },
       {
-        Effect   = "Allow"
-        Action   = ["iot:Connect", "iot:Subscribe", "iot:Receive"]
+        Effect = "Allow"
+        Action = ["iot:Connect", "iot:Subscribe", "iot:Receive", "iot:Publish"]
         Resource = [
           "arn:aws:iot:${var.aws_region}:*:client/*",
           "arn:aws:iot:${var.aws_region}:*:topicfilter/sigr/results",
-          "arn:aws:iot:${var.aws_region}:*:topic/sigr/results",
+          "arn:aws:iot:${var.aws_region}:*:topic/sigr/results"
         ]
       }
     ]
